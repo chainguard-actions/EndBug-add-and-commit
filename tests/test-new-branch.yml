@@ -1,0 +1,54 @@
+name: Test commit to new branch
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create a test file to commit
+        run: |
+          echo "new branch test content $(date)" > new-branch-test.txt
+
+      - id: action
+        uses: .
+        with:
+          add: 'new-branch-test.txt'
+          message: 'test: commit on new branch'
+          author_name: 'Test User'
+          author_email: 'test@example.com'
+          new_branch: 'act-test-new-branch'
+          push: 'false'
+          fetch: 'false'
+
+      - name: Assert committed output is true
+        env:
+          COMMITTED: ${{ steps.action.outputs.committed }}
+        run: |
+          echo "committed: $COMMITTED"
+          if [ "$COMMITTED" != "true" ]; then
+            echo "FAIL: expected committed=true but got '$COMMITTED'"
+            exit 1
+          fi
+          echo "PASS: committed=true"
+
+      - name: Assert new branch exists
+        run: |
+          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          echo "current branch: $CURRENT_BRANCH"
+          if [ "$CURRENT_BRANCH" != "act-test-new-branch" ]; then
+            echo "FAIL: expected branch 'act-test-new-branch' but got '$CURRENT_BRANCH'"
+            exit 1
+          fi
+          echo "PASS: on branch act-test-new-branch"
+
+      - name: Assert commit message is correct
+        run: |
+          MSG=$(git log -1 --format="%s")
+          echo "message: $MSG"
+          if [ "$MSG" != "test: commit on new branch" ]; then
+            echo "FAIL: unexpected commit message: '$MSG'"
+            exit 1
+          fi
+          echo "PASS: commit message is correct"

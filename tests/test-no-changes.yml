@@ -1,0 +1,55 @@
+name: Test no changes to commit
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Ensure working tree is clean (no untracked/modified files)
+        run: |
+          git status
+          # Remove any untracked files that might have been created
+          git clean -fd
+
+      - id: action
+        uses: .
+        with:
+          add: '.'
+          message: 'test: should not commit anything'
+          push: 'false'
+          fetch: 'false'
+
+      - name: Assert committed output is false
+        env:
+          COMMITTED: ${{ steps.action.outputs.committed }}
+        run: |
+          echo "committed: $COMMITTED"
+          if [ "$COMMITTED" != "false" ]; then
+            echo "FAIL: expected committed=false but got '$COMMITTED'"
+            exit 1
+          fi
+          echo "PASS: committed=false (nothing to commit)"
+
+      - name: Assert commit_long_sha is empty
+        env:
+          LONG_SHA: ${{ steps.action.outputs.commit_long_sha }}
+        run: |
+          echo "commit_long_sha: '$LONG_SHA'"
+          if [ -n "$LONG_SHA" ]; then
+            echo "FAIL: expected commit_long_sha to be empty but got '$LONG_SHA'"
+            exit 1
+          fi
+          echo "PASS: commit_long_sha is empty as expected"
+
+      - name: Assert pushed is false
+        env:
+          PUSHED: ${{ steps.action.outputs.pushed }}
+        run: |
+          echo "pushed: $PUSHED"
+          if [ "$PUSHED" != "false" ]; then
+            echo "FAIL: expected pushed=false but got '$PUSHED'"
+            exit 1
+          fi
+          echo "PASS: pushed=false"

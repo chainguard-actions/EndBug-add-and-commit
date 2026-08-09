@@ -1,0 +1,65 @@
+name: Test custom author and committer
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create a test file to commit
+        run: |
+          echo "custom author test $(date)" > custom-author-test.txt
+
+      - id: action
+        uses: .
+        with:
+          add: 'custom-author-test.txt'
+          message: 'test: commit with custom author and committer'
+          author_name: 'Custom Author'
+          author_email: 'custom-author@example.com'
+          committer_name: 'Custom Committer'
+          committer_email: 'custom-committer@example.com'
+          push: 'false'
+          fetch: 'false'
+
+      - name: Assert committed output is true
+        env:
+          COMMITTED: ${{ steps.action.outputs.committed }}
+        run: |
+          echo "committed: $COMMITTED"
+          if [ "$COMMITTED" != "true" ]; then
+            echo "FAIL: expected committed=true but got '$COMMITTED'"
+            exit 1
+          fi
+          echo "PASS: committed=true"
+
+      - name: Assert commit has correct author
+        run: |
+          AUTHOR=$(git log -1 --format="%an <%ae>")
+          echo "author: $AUTHOR"
+          if [ "$AUTHOR" != "Custom Author <custom-author@example.com>" ]; then
+            echo "FAIL: expected 'Custom Author <custom-author@example.com>' but got '$AUTHOR'"
+            exit 1
+          fi
+          echo "PASS: author is correct"
+
+      - name: Assert commit has correct committer
+        run: |
+          COMMITTER=$(git log -1 --format="%cn <%ce>")
+          echo "committer: $COMMITTER"
+          if [ "$COMMITTER" != "Custom Committer <custom-committer@example.com>" ]; then
+            echo "FAIL: expected 'Custom Committer <custom-committer@example.com>' but got '$COMMITTER'"
+            exit 1
+          fi
+          echo "PASS: committer is correct"
+
+      - name: Assert commit message is correct
+        run: |
+          MSG=$(git log -1 --format="%s")
+          echo "message: $MSG"
+          if [ "$MSG" != "test: commit with custom author and committer" ]; then
+            echo "FAIL: unexpected commit message: '$MSG'"
+            exit 1
+          fi
+          echo "PASS: commit message is correct"

@@ -1,0 +1,70 @@
+name: Test basic commit
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create a test file to commit
+        run: |
+          echo "test content $(date)" > test-file.txt
+
+      - id: action
+        uses: .
+        with:
+          add: 'test-file.txt'
+          message: 'test: basic commit from act test'
+          author_name: 'Test User'
+          author_email: 'test@example.com'
+          push: 'false'
+          fetch: 'false'
+
+      - name: Assert committed output is true
+        env:
+          COMMITTED: ${{ steps.action.outputs.committed }}
+        run: |
+          echo "committed: $COMMITTED"
+          if [ "$COMMITTED" != "true" ]; then
+            echo "FAIL: expected committed=true but got '$COMMITTED'"
+            exit 1
+          fi
+          echo "PASS: committed=true"
+
+      - name: Assert commit_long_sha is set
+        env:
+          LONG_SHA: ${{ steps.action.outputs.commit_long_sha }}
+        run: |
+          echo "commit_long_sha: $LONG_SHA"
+          if [ -z "$LONG_SHA" ]; then
+            echo "FAIL: expected commit_long_sha to be non-empty"
+            exit 1
+          fi
+          if [ ${#LONG_SHA} -ne 40 ]; then
+            echo "FAIL: expected 40-char SHA but got length ${#LONG_SHA}"
+            exit 1
+          fi
+          echo "PASS: commit_long_sha=$LONG_SHA"
+
+      - name: Assert commit_sha is set
+        env:
+          SHORT_SHA: ${{ steps.action.outputs.commit_sha }}
+        run: |
+          echo "commit_sha: $SHORT_SHA"
+          if [ -z "$SHORT_SHA" ]; then
+            echo "FAIL: expected commit_sha to be non-empty"
+            exit 1
+          fi
+          echo "PASS: commit_sha=$SHORT_SHA"
+
+      - name: Assert pushed is false
+        env:
+          PUSHED: ${{ steps.action.outputs.pushed }}
+        run: |
+          echo "pushed: $PUSHED"
+          if [ "$PUSHED" != "false" ]; then
+            echo "FAIL: expected pushed=false but got '$PUSHED'"
+            exit 1
+          fi
+          echo "PASS: pushed=false"

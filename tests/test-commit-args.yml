@@ -1,0 +1,39 @@
+name: Test commit input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Create a file to commit
+        run: |
+          echo "test-commit-args-$(date +%s)" > hardened/tests/commit-args-test.txt
+
+      - id: action
+        uses: .
+        with:
+          add: 'hardened/tests/commit-args-test.txt'
+          message: 'test: commit with extra args'
+          commit: '--no-verify'
+          push: 'false'
+
+      - name: Assert committed output
+        env:
+          COMMITTED: ${{ steps.action.outputs.committed }}
+        run: |
+          echo "committed: $COMMITTED"
+          if [ "$COMMITTED" != "true" ]; then
+            echo "FAIL: expected committed=true but got '$COMMITTED'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          git reset HEAD~1 --soft 2>/dev/null || true
+          rm -f hardened/tests/commit-args-test.txt

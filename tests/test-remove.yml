@@ -1,0 +1,52 @@
+name: Test remove input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Create and commit a file to be removed
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          echo "file to remove" > hardened/tests/remove-test.txt
+          git add hardened/tests/remove-test.txt
+          git commit -m "add file for removal test"
+
+      - id: action
+        uses: .
+        with:
+          add: '.'
+          remove: 'hardened/tests/remove-test.txt'
+          message: 'test: remove file via action'
+          push: 'false'
+
+      - name: Assert committed output
+        env:
+          COMMITTED: ${{ steps.action.outputs.committed }}
+        run: |
+          echo "committed: $COMMITTED"
+          if [ "$COMMITTED" != "true" ]; then
+            echo "FAIL: expected committed=true but got '$COMMITTED'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert file was removed from git
+        run: |
+          if git ls-files --error-unmatch hardened/tests/remove-test.txt 2>/dev/null; then
+            echo "FAIL: file still tracked by git after removal"
+            exit 1
+          fi
+          echo "PASS: file removed from git"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          git reset HEAD~1 --soft 2>/dev/null || true
+          git reset HEAD~1 --soft 2>/dev/null || true
+          rm -f hardened/tests/remove-test.txt

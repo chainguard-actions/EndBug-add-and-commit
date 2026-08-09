@@ -1,0 +1,65 @@
+name: Test commit with tag
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create a test file to commit
+        run: |
+          echo "tag test content $(date)" > tag-test-file.txt
+
+      - id: action
+        uses: .
+        with:
+          add: 'tag-test-file.txt'
+          message: 'test: commit with tag'
+          author_name: 'Test User'
+          author_email: 'test@example.com'
+          tag: 'v0.0.1-act-test --force'
+          push: 'false'
+          fetch: 'false'
+
+      - name: Assert committed output is true
+        env:
+          COMMITTED: ${{ steps.action.outputs.committed }}
+        run: |
+          echo "committed: $COMMITTED"
+          if [ "$COMMITTED" != "true" ]; then
+            echo "FAIL: expected committed=true but got '$COMMITTED'"
+            exit 1
+          fi
+          echo "PASS: committed=true"
+
+      - name: Assert tagged output is true
+        env:
+          TAGGED: ${{ steps.action.outputs.tagged }}
+        run: |
+          echo "tagged: $TAGGED"
+          if [ "$TAGGED" != "true" ]; then
+            echo "FAIL: expected tagged=true but got '$TAGGED'"
+            exit 1
+          fi
+          echo "PASS: tagged=true"
+
+      - name: Assert tag exists in git
+        run: |
+          if ! git tag | grep -q "v0.0.1-act-test"; then
+            echo "FAIL: expected tag v0.0.1-act-test to exist"
+            git tag
+            exit 1
+          fi
+          echo "PASS: tag v0.0.1-act-test exists"
+
+      - name: Assert tag_pushed is false (push was disabled)
+        env:
+          TAG_PUSHED: ${{ steps.action.outputs.tag_pushed }}
+        run: |
+          echo "tag_pushed: $TAG_PUSHED"
+          if [ "$TAG_PUSHED" != "false" ]; then
+            echo "FAIL: expected tag_pushed=false but got '$TAG_PUSHED'"
+            exit 1
+          fi
+          echo "PASS: tag_pushed=false"
