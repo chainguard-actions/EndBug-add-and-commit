@@ -1,0 +1,80 @@
+name: Test basic commit
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up git config and local remote
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          rm -rf "$GITHUB_WORKSPACE/.git-remote"
+          git init --bare "$GITHUB_WORKSPACE/.git-remote"
+          git push "$GITHUB_WORKSPACE/.git-remote" HEAD:refs/heads/act-harness
+          git push "$GITHUB_WORKSPACE/.git-remote" --tags
+          git remote set-url origin "$GITHUB_WORKSPACE/.git-remote" 2>/dev/null || \
+            git remote add origin "$GITHUB_WORKSPACE/.git-remote"
+          git branch --set-upstream-to=origin/act-harness act-harness 2>/dev/null || true
+
+      - name: Create a test file to commit
+        run: |
+          echo "test content $(date)" > "$GITHUB_WORKSPACE/test-file.txt"
+
+      - id: action
+        uses: .
+        with:
+          add: 'test-file.txt'
+          message: 'test: add test file'
+          author_name: 'Test User'
+          author_email: 'test@example.com'
+          fetch: 'false'
+          push: 'origin HEAD:act-harness'
+
+      - name: Assert committed output is true
+        env:
+          COMMITTED: ${{ steps.action.outputs.committed }}
+        run: |
+          echo "committed: $COMMITTED"
+          if [ "$COMMITTED" != "true" ]; then
+            echo "FAIL: expected committed=true but got '$COMMITTED'"
+            exit 1
+          fi
+          echo "PASS: committed=true"
+
+      - name: Assert commit_long_sha is set and non-empty
+        env:
+          LONG_SHA: ${{ steps.action.outputs.commit_long_sha }}
+        run: |
+          echo "commit_long_sha: $LONG_SHA"
+          if [ -z "$LONG_SHA" ]; then
+            echo "FAIL: expected commit_long_sha to be non-empty"
+            exit 1
+          fi
+          echo "PASS: commit_long_sha=$LONG_SHA"
+
+      - name: Assert commit_sha is set and non-empty
+        env:
+          SHORT_SHA: ${{ steps.action.outputs.commit_sha }}
+        run: |
+          echo "commit_sha: $SHORT_SHA"
+          if [ -z "$SHORT_SHA" ]; then
+            echo "FAIL: expected commit_sha to be non-empty"
+            exit 1
+          fi
+          echo "PASS: commit_sha=$SHORT_SHA"
+
+      - name: Assert the file was committed in git log
+        run: |
+          LAST_MSG=$(git log -1 --pretty=%s)
+          echo "last commit message: $LAST_MSG"
+          if [ "$LAST_MSG" != "test: add test file" ]; then
+            echo "FAIL: expected commit message 'test: add test file' but got '$LAST_MSG'"
+            exit 1
+          fi
+          echo "PASS: commit message matches"

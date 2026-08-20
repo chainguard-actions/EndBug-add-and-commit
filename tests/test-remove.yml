@@ -1,0 +1,58 @@
+name: Test remove input (git rm arguments)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+
+      - name: Set up reachable origin for git operations
+        run: |
+          rm -rf "$GITHUB_WORKSPACE/.git-remote"
+          git init --bare "$GITHUB_WORKSPACE/.git-remote"
+          git push "$GITHUB_WORKSPACE/.git-remote" HEAD:refs/heads/act-harness
+          git push "$GITHUB_WORKSPACE/.git-remote" --tags
+          git remote set-url origin "$GITHUB_WORKSPACE/.git-remote" 2>/dev/null || \
+            git remote add origin "$GITHUB_WORKSPACE/.git-remote"
+
+      - name: Create and commit a file to be removed
+        run: |
+          echo "file to be removed" > hardened/tests/remove-test-file.txt
+          git add hardened/tests/remove-test-file.txt
+          git commit -m "add file for removal test"
+
+      - id: action
+        uses: .
+        with:
+          add: '.'
+          remove: 'hardened/tests/remove-test-file.txt'
+          message: 'test: remove file via action'
+          push: 'false'
+          fetch: 'false'
+
+      - name: Assert committed output
+        env:
+          COMMITTED: ${{ steps.action.outputs.committed }}
+        run: |
+          echo "committed: $COMMITTED"
+          if [ "$COMMITTED" != "true" ]; then
+            echo "FAIL: expected committed=true but got '$COMMITTED'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert file was removed from git tracking
+        run: |
+          if git ls-files --error-unmatch hardened/tests/remove-test-file.txt 2>/dev/null; then
+            echo "FAIL: file still tracked by git after removal"
+            exit 1
+          fi
+          echo "PASS: file successfully removed from git tracking"

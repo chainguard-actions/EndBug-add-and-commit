@@ -1,0 +1,48 @@
+name: Test no changes to commit
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up git config
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+
+      - id: action
+        uses: .
+        with:
+          add: '.'
+          message: 'test: no changes commit'
+          author_name: 'Test User'
+          author_email: 'test@example.com'
+          fetch: 'false'
+          push: 'false'
+
+      - name: Assert committed output is false when nothing changed
+        env:
+          COMMITTED: ${{ steps.action.outputs.committed }}
+        run: |
+          echo "committed: $COMMITTED"
+          if [ "$COMMITTED" != "false" ]; then
+            echo "FAIL: expected committed=false (no changes) but got '$COMMITTED'"
+            exit 1
+          fi
+          echo "PASS: committed=false as expected when no changes"
+
+      - name: Assert commit_long_sha is empty when nothing committed
+        env:
+          LONG_SHA: ${{ steps.action.outputs.commit_long_sha }}
+        run: |
+          echo "commit_long_sha: '$LONG_SHA'"
+          if [ -n "$LONG_SHA" ]; then
+            echo "FAIL: expected commit_long_sha to be empty when nothing committed, got '$LONG_SHA'"
+            exit 1
+          fi
+          echo "PASS: commit_long_sha is empty as expected"

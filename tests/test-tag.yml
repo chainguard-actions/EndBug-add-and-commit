@@ -1,0 +1,70 @@
+name: Test commit with tag
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up git config and local remote
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          rm -rf "$GITHUB_WORKSPACE/.git-remote"
+          git init --bare "$GITHUB_WORKSPACE/.git-remote"
+          git push "$GITHUB_WORKSPACE/.git-remote" HEAD:refs/heads/act-harness
+          git push "$GITHUB_WORKSPACE/.git-remote" --tags
+          git remote set-url origin "$GITHUB_WORKSPACE/.git-remote" 2>/dev/null || \
+            git remote add origin "$GITHUB_WORKSPACE/.git-remote"
+          git branch --set-upstream-to=origin/act-harness act-harness 2>/dev/null || true
+
+      - name: Create a test file to commit
+        run: |
+          echo "tag test $(date)" > "$GITHUB_WORKSPACE/tag-test.txt"
+
+      - id: action
+        uses: .
+        with:
+          add: 'tag-test.txt'
+          message: 'test: tagged commit'
+          author_name: 'Test User'
+          author_email: 'test@example.com'
+          tag: 'v0.0.1-test -m "test tag"'
+          fetch: 'false'
+          push: 'origin HEAD:act-harness'
+          tag_push: '--force'
+
+      - name: Assert committed output is true
+        env:
+          COMMITTED: ${{ steps.action.outputs.committed }}
+        run: |
+          echo "committed: $COMMITTED"
+          if [ "$COMMITTED" != "true" ]; then
+            echo "FAIL: expected committed=true but got '$COMMITTED'"
+            exit 1
+          fi
+          echo "PASS: committed=true"
+
+      - name: Assert tagged output is true
+        env:
+          TAGGED: ${{ steps.action.outputs.tagged }}
+        run: |
+          echo "tagged: $TAGGED"
+          if [ "$TAGGED" != "true" ]; then
+            echo "FAIL: expected tagged=true but got '$TAGGED'"
+            exit 1
+          fi
+          echo "PASS: tagged=true"
+
+      - name: Assert the tag exists in git
+        run: |
+          if ! git tag | grep -q "v0.0.1-test"; then
+            echo "FAIL: expected tag v0.0.1-test to exist"
+            git tag
+            exit 1
+          fi
+          echo "PASS: tag v0.0.1-test exists"

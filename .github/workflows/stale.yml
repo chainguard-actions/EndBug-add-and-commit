@@ -1,0 +1,13 @@
+name: 'Handle stale issues and PR'
+on:
+  schedule:
+    - cron: '00 5,17 * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    uses: EndBug/workflows/.github/workflows/stale.yml@11cb877de3d5f64cdb885a9c1e11244b7bfedd06 # main
