@@ -1,0 +1,75 @@
+name: Test commit and push to local origin
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Configure git user and set up local origin
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          # Create a bare repo as origin so git fetch and push work locally
+          rm -rf "$GITHUB_WORKSPACE/.git-remote"
+          git init --bare "$GITHUB_WORKSPACE/.git-remote"
+          git push "$GITHUB_WORKSPACE/.git-remote" HEAD:refs/heads/act-harness
+          git push "$GITHUB_WORKSPACE/.git-remote" --tags
+          git remote set-url origin "$GITHUB_WORKSPACE/.git-remote" 2>/dev/null || \
+            git remote add origin "$GITHUB_WORKSPACE/.git-remote"
+          # Set upstream tracking so git push knows where to push
+          git fetch origin
+          git branch --set-upstream-to=origin/act-harness act-harness 2>/dev/null || true
+
+      - name: Create a file to commit and push
+        run: |
+          echo "push test $(date +%s)" > tests/push-test-file.txt
+
+      - id: action
+        uses: .
+        with:
+          add: 'tests/push-test-file.txt'
+          message: 'chore: push test'
+          # Use explicit push args to push current branch to local origin
+          push: 'origin act-harness'
+          fetch: '--tags --force'
+          author_name: 'Test User'
+          author_email: 'test@example.com'
+
+      - name: Assert committed and pushed outputs
+        env:
+          COMMITTED: ${{ steps.action.outputs.committed }}
+          PUSHED: ${{ steps.action.outputs.pushed }}
+          COMMIT_SHA: ${{ steps.action.outputs.commit_sha }}
+          COMMIT_LONG_SHA: ${{ steps.action.outputs.commit_long_sha }}
+        run: |
+          echo "committed: $COMMITTED"
+          echo "pushed: $PUSHED"
+          echo "commit_sha: $COMMIT_SHA"
+          echo "commit_long_sha: $COMMIT_LONG_SHA"
+          if [ "$COMMITTED" != "true" ]; then
+            echo "FAIL: expected committed=true, got '$COMMITTED'"
+            exit 1
+          fi
+          echo "PASS: committed=true"
+          if [ "$PUSHED" != "true" ]; then
+            echo "FAIL: expected pushed=true, got '$PUSHED'"
+            exit 1
+          fi
+          echo "PASS: pushed=true"
+          if [ -z "$COMMIT_SHA" ]; then
+            echo "FAIL: commit_sha is empty"
+            exit 1
+          fi
+          echo "PASS: commit_sha='$COMMIT_SHA'"
+          # Verify the commit was pushed to the bare repo
+          REMOTE_SHA=$(git ls-remote "$GITHUB_WORKSPACE/.git-remote" refs/heads/act-harness | awk '{print $1}')
+          echo "remote_sha: $REMOTE_SHA"
+          if [ -z "$REMOTE_SHA" ]; then
+            echo "FAIL: could not find remote SHA"
+            exit 1
+          fi
+          echo "PASS: commit was pushed to remote"

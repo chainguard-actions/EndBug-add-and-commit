@@ -1,0 +1,53 @@
+name: Test new_branch input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up git origin reachable inside the action
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          rm -rf "$GITHUB_WORKSPACE/.git-remote"
+          git init --bare "$GITHUB_WORKSPACE/.git-remote"
+          git push "$GITHUB_WORKSPACE/.git-remote" HEAD:refs/heads/act-harness
+          git remote set-url origin "$GITHUB_WORKSPACE/.git-remote" 2>/dev/null || \
+            git remote add origin "$GITHUB_WORKSPACE/.git-remote"
+
+      - name: Create a file to commit
+        run: |
+          echo "new branch test $(date +%s)" > hardened/tests/new-branch-test.txt
+
+      - id: action
+        uses: .
+        with:
+          add: 'hardened/tests/new-branch-test.txt'
+          message: 'test: commit on new branch'
+          new_branch: 'test-new-branch-output'
+          push: 'false'
+
+      - name: Assert committed output
+        env:
+          COMMITTED: ${{ steps.action.outputs.committed }}
+        run: |
+          echo "committed: $COMMITTED"
+          if [ "$COMMITTED" != "true" ]; then
+            echo "FAIL: expected committed=true, got '$COMMITTED'"
+            exit 1
+          fi
+          echo "PASS: committed=true"
+
+      - name: Assert we are on the new branch
+        run: |
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          echo "current branch: $BRANCH"
+          if [ "$BRANCH" != "test-new-branch-output" ]; then
+            echo "FAIL: expected branch 'test-new-branch-output', got '$BRANCH'"
+            exit 1
+          fi
+          echo "PASS: on correct new branch"

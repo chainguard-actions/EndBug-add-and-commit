@@ -1,0 +1,24 @@
+name: Export label config
+on:
+  # You can run this with every event, but it's better to run it only when you actually need it.
+  workflow_dispatch:
+
+permissions:
+  issues: read
+
+jobs:
+  labels:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: EndBug/export-label-config@555e14d8623c4054e843aaf9669d85ab64df9aac # main
+        with:
+          # This is needed if you're dealing with private repos.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+          # Set this to `true` if you want to get the raw API response. Defaults to `false`.
+          raw-result: false
+
+          # By default every label entry will have an `aliases` property set to an empty array.
+          # It's for EndBug/label-sync, if you don't want it you cans set this to `false`
+          add-aliases: true

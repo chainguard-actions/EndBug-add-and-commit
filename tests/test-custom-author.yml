@@ -1,0 +1,51 @@
+name: Test custom author
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Configure git user
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+
+      - name: Create a file to commit
+        run: |
+          echo "custom author test $(date +%s)" > tests/custom-author-test-file.txt
+
+      - id: action
+        uses: .
+        with:
+          add: 'tests/custom-author-test-file.txt'
+          message: 'chore: custom author test'
+          push: 'false'
+          fetch: 'false'
+          author_name: 'Custom Author'
+          author_email: 'custom@example.com'
+          default_author: 'user_info'
+
+      - name: Assert committed and verify author
+        env:
+          COMMITTED: ${{ steps.action.outputs.committed }}
+          COMMIT_LONG_SHA: ${{ steps.action.outputs.commit_long_sha }}
+        run: |
+          echo "committed: $COMMITTED"
+          echo "commit_long_sha: $COMMIT_LONG_SHA"
+          if [ "$COMMITTED" != "true" ]; then
+            echo "FAIL: expected committed=true, got '$COMMITTED'"
+            exit 1
+          fi
+          echo "PASS: committed=true"
+          # Verify the author in the commit
+          AUTHOR=$(git log -1 --format="%an <%ae>")
+          echo "author: $AUTHOR"
+          if [ "$AUTHOR" != "Custom Author <custom@example.com>" ]; then
+            echo "FAIL: expected author 'Custom Author <custom@example.com>', got '$AUTHOR'"
+            exit 1
+          fi
+          echo "PASS: author is correct"

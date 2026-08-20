@@ -1,0 +1,65 @@
+name: Test tag creation
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Configure git user
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          # Delete the test tag if it already exists from a previous run
+          git tag -d v0.0.0-test 2>/dev/null || true
+
+      - name: Create a file to commit
+        run: |
+          echo "tag creation test $(date +%s)" > tests/tag-creation-test-file.txt
+
+      - id: action
+        uses: .
+        with:
+          add: 'tests/tag-creation-test-file.txt'
+          message: 'chore: tag creation test'
+          tag: 'v0.0.0-test'
+          push: 'false'
+          fetch: 'false'
+          author_name: 'Test User'
+          author_email: 'test@example.com'
+
+      - name: Assert committed and tagged outputs
+        env:
+          COMMITTED: ${{ steps.action.outputs.committed }}
+          TAGGED: ${{ steps.action.outputs.tagged }}
+          TAG_PUSHED: ${{ steps.action.outputs.tag_pushed }}
+          COMMIT_SHA: ${{ steps.action.outputs.commit_sha }}
+        run: |
+          echo "committed: $COMMITTED"
+          echo "tagged: $TAGGED"
+          echo "tag_pushed: $TAG_PUSHED"
+          echo "commit_sha: $COMMIT_SHA"
+          if [ "$COMMITTED" != "true" ]; then
+            echo "FAIL: expected committed=true, got '$COMMITTED'"
+            exit 1
+          fi
+          echo "PASS: committed=true"
+          if [ "$TAGGED" != "true" ]; then
+            echo "FAIL: expected tagged=true, got '$TAGGED'"
+            exit 1
+          fi
+          echo "PASS: tagged=true"
+          # Verify the tag exists locally
+          if ! git tag | grep -q "v0.0.0-test"; then
+            echo "FAIL: tag v0.0.0-test not found in git tags"
+            exit 1
+          fi
+          echo "PASS: tag v0.0.0-test exists"
+          if [ -z "$COMMIT_SHA" ]; then
+            echo "FAIL: commit_sha is empty"
+            exit 1
+          fi
+          echo "PASS: commit_sha='$COMMIT_SHA'"

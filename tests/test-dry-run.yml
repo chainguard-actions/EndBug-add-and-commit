@@ -1,0 +1,54 @@
+name: Test dry_run mode
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Configure git user
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+
+      - name: Create a file to stage
+        run: |
+          echo "dry run test content" > tests/dry-run-test-file.txt
+
+      - id: action
+        uses: .
+        with:
+          add: 'tests/dry-run-test-file.txt'
+          message: 'chore: dry run test commit'
+          dry_run: 'true'
+          fetch: 'false'
+          push: 'false'
+          author_name: 'Test User'
+          author_email: 'test@example.com'
+
+      - name: Assert committed output is false (dry run)
+        env:
+          COMMITTED: ${{ steps.action.outputs.committed }}
+          PUSHED: ${{ steps.action.outputs.pushed }}
+        run: |
+          echo "committed: $COMMITTED"
+          echo "pushed: $PUSHED"
+          if [ "$COMMITTED" != "false" ]; then
+            echo "FAIL: expected committed=false in dry_run mode, got '$COMMITTED'"
+            exit 1
+          fi
+          echo "PASS: committed=false as expected in dry_run mode"
+          if [ "$PUSHED" != "false" ]; then
+            echo "FAIL: expected pushed=false in dry_run mode, got '$PUSHED'"
+            exit 1
+          fi
+          echo "PASS: pushed=false as expected in dry_run mode"
+          # Verify the file was NOT actually committed
+          if git show HEAD -- tests/dry-run-test-file.txt 2>/dev/null | grep -q "dry run test content"; then
+            echo "FAIL: file was committed despite dry_run=true"
+            exit 1
+          fi
+          echo "PASS: file was not committed (dry run)"
