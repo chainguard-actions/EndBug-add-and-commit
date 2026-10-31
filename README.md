@@ -6,11 +6,11 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 ## Versions
 
-| Version | Tag | Upstream commit |
-|---------|-----|-----------------|
-| v10.0.0 | [`v10.0.0`](https://github.com/chainguard-actions/EndBug-add-and-commit/tree/v10.0.0) | [`290ea2c`](https://github.com/EndBug/add-and-commit/commit/290ea2c423ad77ca9c62ae0f5b224379612c0321) |
-| v11.0.0 | [`v11.0.0`](https://github.com/chainguard-actions/EndBug-add-and-commit/tree/v11.0.0) | [`645ecc0`](https://github.com/EndBug/add-and-commit/commit/645ecc0dd0a57f4d86d26c0aa5fc42c0a856fbca) |
-| v11.1.1 | [`v11.1.1`](https://github.com/chainguard-actions/EndBug-add-and-commit/tree/v11.1.1) | [`cc9c08b`](https://github.com/EndBug/add-and-commit/commit/cc9c08ba6c8df3b93a8f2db63e89b98368ae2ae8) |
+| Version | Tag | Upstream commit | Hardening report |
+|---------|-----|-----------------|------------------|
+| v10.0.0 | [`v10.0.0`](https://github.com/chainguard-actions/EndBug-add-and-commit/tree/v10.0.0) | [`290ea2c`](https://github.com/EndBug/add-and-commit/commit/290ea2c423ad77ca9c62ae0f5b224379612c0321) | [`HARDENING.md`](https://github.com/chainguard-actions/EndBug-add-and-commit/blob/v10.0.0/HARDENING.md) |
+| v11.0.0 | [`v11.0.0`](https://github.com/chainguard-actions/EndBug-add-and-commit/tree/v11.0.0) | [`645ecc0`](https://github.com/EndBug/add-and-commit/commit/645ecc0dd0a57f4d86d26c0aa5fc42c0a856fbca) | [`HARDENING.md`](https://github.com/chainguard-actions/EndBug-add-and-commit/blob/v11.0.0/HARDENING.md) |
+| v11.1.1 | [`v11.1.1`](https://github.com/chainguard-actions/EndBug-add-and-commit/tree/v11.1.1) | [`cc9c08b`](https://github.com/EndBug/add-and-commit/commit/cc9c08ba6c8df3b93a8f2db63e89b98368ae2ae8) | [`HARDENING.md`](https://github.com/chainguard-actions/EndBug-add-and-commit/blob/v11.1.1/HARDENING.md) |
 
 ## Privacy
 
